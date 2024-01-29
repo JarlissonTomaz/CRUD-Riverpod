@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class CounterNotifier extends StateNotifier<int> {
-  CounterNotifier() : super(0);
+class CounterNotifier extends StateNotifier<AsyncValue<int>> {
+  CounterNotifier() : super(const AsyncData(0));
 
-  void increment() => state++;
-  void decrement() => state--;
+  void increment(int value) async {
+    state = const AsyncLoading();
+    await Future.delayed(const Duration(seconds: 2));
+    state = AsyncData(value + 1);
+  }
+
+  void decrement(int value) async {
+    state = const AsyncLoading();
+    await Future.delayed(const Duration(seconds: 2));
+    state = AsyncData(value - 1);
+  }
+
+  //void decrement() => state--;
 }
 
-final counterProvider =
-    StateNotifierProvider<CounterNotifier, int>((ref) => CounterNotifier());
+final counterProvider = StateNotifierProvider<CounterNotifier, AsyncValue<int>>(
+    (ref) => CounterNotifier());
 main() {
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -30,30 +41,35 @@ class MyHomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final _counter = ref.watch(counterProvider);
+    AsyncValue<int> _counter = ref.watch(counterProvider);
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              _counter.toString(),
-              style: const TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
+            _counter.when(
+              data: (data) => Text(
+                _counter.value.toString(),
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+              loading: () => const CircularProgressIndicator(),
+              error: (error, stack) => const Text('Error'),
             ),
+            const SizedBox(height: 20),
             ElevatedButton(
                 onPressed: () {
-                  ref.read(counterProvider.notifier).increment();
+                  ref.read(counterProvider.notifier).increment(_counter.value!);
                 },
-                child: const Text('Increment')),
+                child: const Text('+')),
             ElevatedButton(
                 onPressed: () {
-                  ref.read(counterProvider.notifier).decrement();
+                  ref.read(counterProvider.notifier).decrement(_counter.value!);
                 },
-                child: const Text('decrement')),
+                child: const Text('_')),
           ],
         ),
       ),
